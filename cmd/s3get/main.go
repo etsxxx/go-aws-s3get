@@ -168,11 +168,17 @@ func download(ctx *cli.Context) error {
 	var cfg aws.Config
 
 	endpoint := ctx.String("endpoint-url")
+	profile := ctx.String("profile")
+
+	var loadOptions []func(*config.LoadOptions) error
+	if profile != "" && profile != "default" {
+		loadOptions = append(loadOptions, config.WithSharedConfigProfile(profile))
+	}
 
 	// Load the Shared AWS Configuration (~/.aws/config)
 	cfg, err = config.LoadDefaultConfig(
 		context.TODO(),
-		config.WithSharedConfigProfile(ctx.String("profile")),
+		loadOptions...,
 	)
 	if err != nil {
 		return err
