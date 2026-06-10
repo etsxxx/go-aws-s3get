@@ -168,31 +168,14 @@ func download(ctx *cli.Context) error {
 	var cfg aws.Config
 
 	endpoint := ctx.String("endpoint-url")
-	if endpoint != "" {
-		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				URL:               endpoint,
-				HostnameImmutable: true,
-			}, nil
-		})
-		// Load the Shared AWS Configuration (~/.aws/config)
-		cfg, err = config.LoadDefaultConfig(
-			context.TODO(),
-			config.WithEndpointResolverWithOptions(resolver),
-			config.WithSharedConfigProfile(ctx.String("profile")),
-		)
-		if err != nil {
-			return err
-		}
-	} else {
-		// Load the Shared AWS Configuration (~/.aws/config)
-		cfg, err = config.LoadDefaultConfig(
-			context.TODO(),
-			config.WithSharedConfigProfile(ctx.String("profile")),
-		)
-		if err != nil {
-			return err
-		}
+
+	// Load the Shared AWS Configuration (~/.aws/config)
+	cfg, err = config.LoadDefaultConfig(
+		context.TODO(),
+		config.WithSharedConfigProfile(ctx.String("profile")),
+	)
+	if err != nil {
+		return err
 	}
 
 	// read AWS Access Keys and overwrite credential
@@ -224,7 +207,12 @@ func download(ctx *cli.Context) error {
 	}
 
 	// Create s3 client and download object
-	s3cli := s3.NewFromConfig(cfg)
+	s3cli := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
+			o.UsePathStyle = true
+		}
+	})
 	res, err := s3cli.GetObject(
 		context.TODO(),
 		&s3.GetObjectInput{
